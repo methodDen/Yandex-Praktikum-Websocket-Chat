@@ -9,9 +9,7 @@ from asyncio import (
     StreamReader,
     StreamWriter,
 )
-import logger
-
-logger = logger.get_logger(__name__)
+from logger import logger
 
 
 class Client:
@@ -22,7 +20,7 @@ class Client:
         self.writer: StreamWriter = None
 
     async def connect_to_server(self):
-        logger.info("Client connection is initialized at %s:%d", self.server_host, self.server_port)
+        await asyncio.sleep(2)
         try:
             self.reader, self.writer = await asyncio.open_connection(
                 self.server_host, self.server_port,
@@ -37,24 +35,21 @@ class Client:
             await self.close_connection()
 
     async def close_connection(self):
-        logger.info("Shutting down client connection at %s:%d", self.server_host, self.server_port,)
         self.writer.close()
         await self.writer.wait_closed()
 
     async def send_messages(self):
         while True:
-            logger.info("Processing console input")
             if message := await aioconsole.ainput("~~~ "):
                 self.writer.write(message.encode('utf-8'))
                 await self.writer.drain()
 
     async def receive_messages(self):
         while message := (await self.reader.read(1024)).decode():
-            logger.info("Message is received: %s", message)
             await aioconsole.aprint(message)
 
 
 if __name__ == '__main__':
-    logger.info("Starting client connection")
+    print("Starting client connection")
     client = Client()
     asyncio.run(client.connect_to_server())
