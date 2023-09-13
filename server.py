@@ -1,8 +1,11 @@
 import asyncio
+import threading
+
 from config import (
     SERVER_HOST,
     SERVER_PORT,
     REPORTS_COUNT_LIMIT,
+    BAN_TIME,
     CommandName,
     MessageType,
 )
@@ -59,7 +62,7 @@ class Server:
             case CommandName.HISTORY:
                 pass
             case CommandName.REPORT:
-                username: str = message_elements[1]
+                username: str | None = message_elements[1] if len(message_elements) > 1 else None
             case CommandName.DM:
                 username: str = message_elements[1]
                 message: str = ' '.join(message_elements[2:])
@@ -91,7 +94,7 @@ class Server:
                             case CommandName.HISTORY:
                                 pass
                             case CommandName.REPORT:
-                                pass
+                                await self.report_user(command.username, user)
                             case CommandName.DM:
                                 logger.info("DM command is received from %s", user.username)
                                 await self.send_message_to_dm(
@@ -114,10 +117,9 @@ class Server:
                         logger.info("Public message is received from %s", user.username)
                         await self.send_message_to_everyone(message, user.username,)
                 else:
-                    # user is banned
-                    pass
+                    logger.info("User %s is banned", user.username)
+                    await user.send_message(f"You are banned, cannot send messages")
 
-    # main functionality
     async def send_message_to_everyone(self, message: str, from_username: str,):
         message = await prepare_message(
             message,
@@ -136,15 +138,16 @@ class Server:
             from_username,
             self.online_users,
         )
-        user = self.online_users.get(to_username)
-        if user:
+        from_user = self.online_users.get(from_username)
+        to_user = self.online_users.get(to_username)
+        if to_user:
             if from_username == to_username:
-                await user.send_message(f"Cannot send messages to yourself!")
+                await from_user.send_message(f"Cannot send messages to yourself!")
             else:
                 if message:
-                    await user.send_message(message)
+                    await to_user.send_message(message)
         else:
-            await user.send_message(f"User {to_username} is not online")
+            await from_user.send_message(f"User {to_username} is not online")
 
     async def change_username(self, new_username: str, user: ServerUser) -> None:
         if new_username is None or new_username.strip() == '':
@@ -153,11 +156,38 @@ class Server:
         elif new_username == user.username:
             await user.send_message(f"Username is already {new_username}")
             return
+        elif new_username in self.online_users:
+            await user.send_message(f"Username {new_username} is already taken")
+            return
         old_username = user.username
         user.username = new_username
         self.online_users.pop(old_username)
         self.online_users[new_username] = user
         await user.send_message(f"Your username is changed to {new_username}")
+
+    async def report_user(self, username: str, from_user: ServerUser, ) -> None:
+        if username is None or username.strip() == '':
+            await from_user.send_message(f"Username cannot be empty")
+            return
+        elif username == from_user.username:
+            await from_user.send_message(f"Cannot report yourself")
+            return
+
+        user = self.online_users.get(username)
+        if not user:
+            await from_user.send_message(f"User {username} is not online")
+            return
+        user.report_count += 1
+        await user.send_message(f"You are reported by {from_user.username}")
+        if user.report_count >= REPORTS_COUNT_LIMIT:
+            logger.info("User %s is banned", username)
+            await user.send_message(f"\nYou are banned for {BAN_TIME} seconds")
+            ban_timer = threading.Timer(BAN_TIME, function=self.unban_user, args=(user,))
+            ban_timer.start()
+
+    @staticmethod
+    def unban_user(user: ServerUser,) -> None:
+        user.report_count = 0
 
 
 if __name__ == '__main__':
