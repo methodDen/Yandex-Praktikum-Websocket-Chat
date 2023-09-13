@@ -64,7 +64,7 @@ class Server:
                 username: str = message_elements[1]
                 message: str = ' '.join(message_elements[2:])
             case CommandName.CHANGE_USERNAME:
-                username: str = message_elements[1]
+                username: str | None = message_elements[1] if len(message_elements) > 1 else None
             case CommandName.POSTPONE:
                 seconds_for_delay: int = int(message_elements[1])
                 message: str = ' '.join(message_elements[2:])
@@ -93,22 +93,25 @@ class Server:
                             case CommandName.REPORT:
                                 pass
                             case CommandName.DM:
+                                logger.info("DM command is received from %s", user.username)
                                 await self.send_message_to_dm(
                                     command.message,
                                     user.username,
                                     command.username,
                                 )
                             case CommandName.CHANGE_USERNAME:
-                                pass
+                                await self.change_username(command.username, user)
                             case CommandName.POSTPONE:
                                 pass
                             case CommandName.QUIT:
                                 pass
                             case CommandName.UNKNOWN:
+                                logger.info("Unknown command is received from %s", user.username)
                                 await user.send_message(
                                     f"Unknown command: {command.message if command.message else 'empty command'}"
                                 )
                     else:
+                        logger.info("Public message is received from %s", user.username)
                         await self.send_message_to_everyone(message, user.username,)
                 else:
                     # user is banned
@@ -142,6 +145,19 @@ class Server:
                     await user.send_message(message)
         else:
             await user.send_message(f"User {to_username} is not online")
+
+    async def change_username(self, new_username: str, user: ServerUser) -> None:
+        if new_username is None or new_username.strip() == '':
+            await user.send_message(f"Username cannot be empty")
+            return
+        elif new_username == user.username:
+            await user.send_message(f"Username is already {new_username}")
+            return
+        old_username = user.username
+        user.username = new_username
+        self.online_users.pop(old_username)
+        self.online_users[new_username] = user
+        await user.send_message(f"Your username is changed to {new_username}")
 
 
 if __name__ == '__main__':
