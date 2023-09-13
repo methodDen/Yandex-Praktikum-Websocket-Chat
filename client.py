@@ -20,7 +20,6 @@ class Client:
         self.writer: StreamWriter = None
 
     async def connect_to_server(self):
-        await asyncio.sleep(2)
         try:
             self.reader, self.writer = await asyncio.open_connection(
                 self.server_host, self.server_port,
@@ -40,12 +39,16 @@ class Client:
 
     async def send_messages(self):
         while True:
-            if message := await aioconsole.ainput("~~~ "):
-                self.writer.write(message.encode('utf-8'))
-                await self.writer.drain()
+            message = await aioconsole.ainput('>')
+            if not message:
+                break
+            self.writer.write(message.encode())
+            await self.writer.drain()
 
     async def receive_messages(self):
         while message := (await self.reader.read(1024)).decode():
+            if not message:
+                break
             await aioconsole.aprint(message)
 
 

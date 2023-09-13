@@ -13,6 +13,7 @@ from utils import get_welcome_message
 from models import (
     ServerUser,
     Command,
+    CommandName,
 )
 
 
@@ -42,6 +43,34 @@ class Server:
         await user.send_message(welcome_message)
         await self.process_message(user)
 
+    @staticmethod
+    def parse_message(message: str):
+        message_elements = message.split(' ')
+        command_name = message_elements[0][1:]
+        username = message = seconds_for_delay = None
+        match command_name:
+            case CommandName.HELP:
+                pass
+            case CommandName.HISTORY:
+                pass
+            case CommandName.REPORT:
+                username: str = message_elements[1]
+            case CommandName.DM:
+                username: str = message_elements[1]
+                message: str = ' '.join(message_elements[2:])
+            case CommandName.CHANGE_USERNAME:
+                username: str = message_elements[1]
+            case CommandName.POSTPONE:
+                username: str = message_elements[1]
+                seconds_for_delay: int = int(message_elements[2])
+                message: str = ' '.join(message_elements[3:])
+            case CommandName.QUIT:
+                pass
+            case _:
+                command_name = CommandName.UNKNOWN
+
+        return Command(command_name, username, message, seconds_for_delay)
+
     async def process_message(self, user: ServerUser):
         while True:
             message = await user.receive_message()
@@ -49,16 +78,29 @@ class Server:
                 logger.info("Received a message from %s: %s", user.username, message)
                 if user.report_count < REPORTS_COUNT_LIMIT:
                     if message.startswith('/'):
-                        command = self.parse_message(message)
+                        command = self.parse_message(message.strip())
+                        logger.info("Command %s is received from %s", command.command_name, user.username)
+                        match command.command_name:
+                            case CommandName.HELP:
+                                pass
+                            case CommandName.HISTORY:
+                                pass
+                            case CommandName.REPORT:
+                                pass
+                            case CommandName.DM:
+                                pass
+                            case CommandName.CHANGE_USERNAME:
+                                pass
+                            case CommandName.POSTPONE:
+                                pass
+                            case CommandName.QUIT:
+                                pass
+                            case CommandName.UNKNOWN:
+                                pass
+                    else:
+                        pass
                 else:
-                    # send ban message
                     pass
-
-    def parse_message(self, message: str):
-        print(message.split(' '))
-        command = Command(message.split(' '))
-        print(command)
-        return None
 
 
 if __name__ == '__main__':

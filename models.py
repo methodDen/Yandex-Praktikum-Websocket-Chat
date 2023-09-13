@@ -18,7 +18,18 @@ class ServerUser:
         await self.writer.drain()
 
     async def receive_message(self) -> str:
-        return (await self.reader.read(1024)).decode()
+        return (await self.reader.read(1024)).decode("utf-8")
 
 
-Command = namedtuple('Command', ['command_name', 'val_1', 'val_2'])
+class CommandName(str, Enum):
+    HELP = 'help'
+    HISTORY = 'history'
+    CHANGE_USERNAME = 'change_username'
+    DM = 'dm'
+    REPORT = 'report'
+    POSTPONE = 'postpone'
+    QUIT = 'quit'
+    UNKNOWN = 'unknown'
+
+
+Command = namedtuple('Command', ['command_name', 'username', 'message', 'seconds_for_delay'])
