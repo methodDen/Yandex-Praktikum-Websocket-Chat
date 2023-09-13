@@ -24,3 +24,17 @@ class MessageType(str, Enum):
     PRIVATE = "private"
     BANNED = "banned"
     WARNING = "warning"
+
+
+HELP_MESSAGE = (
+    "\nAvailable commands:\n"
+    "/help — get a list of commands\n"
+    "/history — chat history\n"
+    "/change_username <new_username> — change your username\n"
+    "/dm <username> <message> — send a private message\n"
+    "/report <username> — report a user\n"
+    "/postpone <seconds> <message> — postpone message sending\n"
+    "/quit — leave the server\n"
+    "The project was created by Daniyar Absatov\n"
+    "All rights reserved (c) 2023\n"
+)
