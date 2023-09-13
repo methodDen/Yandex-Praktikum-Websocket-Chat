@@ -1,10 +1,8 @@
 import asyncio
-from datetime import datetime
 from config import (
     SERVER_HOST,
     SERVER_PORT,
     REPORTS_COUNT_LIMIT,
-    TIME_FORMAT,
     CommandName,
     MessageType,
 )
@@ -13,7 +11,10 @@ from asyncio import (
     StreamWriter,
 )
 from logger import logger
-from utils import get_welcome_message, setup_message
+from service import (
+    get_welcome_message,
+    prepare_message,
+)
 from models import (
     ServerUser,
     Command,
@@ -91,7 +92,11 @@ class Server:
                             case CommandName.REPORT:
                                 pass
                             case CommandName.DM:
-                                pass
+                                await self.send_message_to_dm(
+                                    command.message,
+                                    user.username,
+                                    command.username,
+                                )
                             case CommandName.CHANGE_USERNAME:
                                 pass
                             case CommandName.POSTPONE:
@@ -101,16 +106,39 @@ class Server:
                             case CommandName.UNKNOWN:
                                 pass
                     else:
-                        await self.send_message_to_everyone(f"{user.username}: {message}")
+                        await self.send_message_to_everyone(message, user.username,)
                 else:
                     # user is banned
                     pass
 
     # main functionality
-    async def send_message_to_everyone(self, message: str):
-        formatted_message = setup_message(MessageType.PUBLIC, message,)
-        for user in self.online_users.values():
-            await user.send_message(formatted_message)
+    async def send_message_to_everyone(self, message: str, from_username: str,):
+        message = await prepare_message(
+            message,
+            MessageType.PUBLIC,
+            from_username,
+            self.online_users,
+        )
+        if message:
+            for user in self.online_users.values():
+                await user.send_message(message)
+
+    async def send_message_to_dm(self, message: str, from_username: str, to_username: str,):
+        message = await prepare_message(
+            message,
+            MessageType.PRIVATE,
+            from_username,
+            self.online_users,
+        )
+        user = self.online_users.get(to_username)
+        if user:
+            if from_username == to_username:
+                await user.send_message(f"Cannot send messages to yourself!")
+            else:
+                if message:
+                    await user.send_message(message)
+        else:
+            await user.send_message(f"User {to_username} is not online")
 
 
 if __name__ == '__main__':

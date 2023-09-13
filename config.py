@@ -22,3 +22,4 @@ class MessageType(str, Enum):
     PUBLIC = "public"
     PRIVATE = "private"
     BANNED = "banned"
+    WARNING = "warning"
