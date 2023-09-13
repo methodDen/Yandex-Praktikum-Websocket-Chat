@@ -1,8 +1,10 @@
 import asyncio
-
+from datetime import datetime
 from config import (
     SERVER_HOST,
-    SERVER_PORT, REPORTS_COUNT_LIMIT,
+    SERVER_PORT,
+    REPORTS_COUNT_LIMIT,
+    TIME_FORMAT,
 )
 from asyncio import (
     StreamReader,
@@ -19,8 +21,9 @@ from models import (
 
 class Server:
     def __init__(self, host=SERVER_HOST, port=SERVER_PORT,):
-        self.host = host
-        self.port = port
+        self.host: str = host
+        self.port: int = port
+        self.online_users: dict[str, ServerUser] = {}
 
     async def listen(self):
         try:
@@ -36,9 +39,9 @@ class Server:
             logger.info("Shutting down the server")
 
     async def process_client(self, reader: StreamReader, writer: StreamWriter):
-        # add client
         logger.info("Client %s has connected to the server", writer.get_extra_info("peername"))
         user = ServerUser(reader, writer)
+        self.online_users[user.username] = user
         welcome_message = get_welcome_message(user.username)
         await user.send_message(welcome_message)
         await self.process_message(user)
@@ -61,9 +64,8 @@ class Server:
             case CommandName.CHANGE_USERNAME:
                 username: str = message_elements[1]
             case CommandName.POSTPONE:
-                username: str = message_elements[1]
-                seconds_for_delay: int = int(message_elements[2])
-                message: str = ' '.join(message_elements[3:])
+                seconds_for_delay: int = int(message_elements[1])
+                message: str = ' '.join(message_elements[2:])
             case CommandName.QUIT:
                 pass
             case _:
@@ -98,9 +100,18 @@ class Server:
                             case CommandName.UNKNOWN:
                                 pass
                     else:
-                        pass
+                        await self.send_message_to_everyone(f"{user.username}: {message}")
                 else:
+                    # user is banned
                     pass
+
+    # main functionality
+    async def send_message_to_everyone(self, message: str):
+        now = datetime.now()
+        current_time = now.strftime(TIME_FORMAT)
+        message_with_time = f"|public|{current_time}|{message}"
+        for user in self.online_users.values():
+            await user.send_message(message_with_time)
 
 
 if __name__ == '__main__':

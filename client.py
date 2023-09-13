@@ -39,7 +39,7 @@ class Client:
 
     async def send_messages(self):
         while True:
-            message = await aioconsole.ainput('>')
+            message = await aioconsole.ainput()
             if not message:
                 break
             self.writer.write(message.encode())
@@ -49,7 +49,7 @@ class Client:
         while message := (await self.reader.read(1024)).decode():
             if not message:
                 break
-            await aioconsole.aprint(message)
+            await aioconsole.aprint(f"{message}")
 
 
 if __name__ == '__main__':
