@@ -71,7 +71,8 @@ class Server:
             case CommandName.QUIT:
                 pass
             case _:
-                command_name = CommandName.UNKNOWN
+                message: str = command_name
+                command_name: str = CommandName.UNKNOWN
 
         return Command(command_name, username, message, seconds_for_delay)
 
@@ -104,7 +105,9 @@ class Server:
                             case CommandName.QUIT:
                                 pass
                             case CommandName.UNKNOWN:
-                                pass
+                                await user.send_message(
+                                    f"Unknown command: {command.message if command.message else 'empty command'}"
+                                )
                     else:
                         await self.send_message_to_everyone(message, user.username,)
                 else:
