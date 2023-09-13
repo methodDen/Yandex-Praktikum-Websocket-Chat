@@ -29,6 +29,7 @@ class Server:
         self.host: str = host
         self.port: int = port
         self.online_users: dict[str, ServerUser] = {}
+        self.message_history: list[str] = []
 
     async def listen(self):
         try:
@@ -49,6 +50,7 @@ class Server:
         self.online_users[user.username] = user
         welcome_message = get_welcome_message(user.username)
         await user.send_message(welcome_message)
+        await self.show_history(user)
         await self.process_message(user)
 
     @staticmethod
@@ -71,8 +73,6 @@ class Server:
             case CommandName.POSTPONE:
                 seconds_for_delay: int = int(message_elements[1])
                 message: str = ' '.join(message_elements[2:])
-            case CommandName.QUIT:
-                pass
             case _:
                 message: str = command_name
                 command_name: str = CommandName.UNKNOWN
@@ -95,7 +95,7 @@ class Server:
                                     HELP_MESSAGE,
                                 )
                             case CommandName.HISTORY:
-                                pass
+                                await self.show_history(user)
                             case CommandName.REPORT:
                                 await self.report_user(command.username, user)
                             case CommandName.DM:
@@ -120,8 +120,6 @@ class Server:
                                     )
                                 )
                                 await user.send_message(f"Message will be sent in {command.seconds_for_delay} seconds")
-                            case CommandName.QUIT:
-                                pass
                             case CommandName.UNKNOWN:
                                 logger.info("Unknown command is received from %s", user.username)
                                 await user.send_message(
@@ -142,6 +140,7 @@ class Server:
             self.online_users,
         )
         if message:
+            self.message_history.append(message)
             for user in self.online_users.values():
                 await user.send_message(message)
 
@@ -208,6 +207,11 @@ class Server:
     async def unban_user(user: ServerUser,) -> None:
         user.report_count = 0
         await user.send_message(f"\nYou are unbanned")
+
+    async def show_history(self, user: ServerUser,) -> None:
+        logger.info("History is requested by %s", user.username)
+        for message in self.message_history[-20:]:
+            await user.send_message(f'{message}\n')
 
 
 if __name__ == '__main__':

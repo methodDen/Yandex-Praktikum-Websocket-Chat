@@ -15,7 +15,6 @@ class CommandName(str, Enum):
     DM = 'dm'
     REPORT = 'report'
     POSTPONE = 'postpone'
-    QUIT = 'quit'
     UNKNOWN = 'unknown'
 
 
@@ -34,7 +33,6 @@ HELP_MESSAGE = (
     "/dm <username> <message> — send a private message\n"
     "/report <username> — report a user\n"
     "/postpone <seconds> <message> — postpone message sending\n"
-    "/quit — leave the server\n"
     "The project was created by Daniyar Absatov\n"
     "All rights reserved (c) 2023\n"
 )
