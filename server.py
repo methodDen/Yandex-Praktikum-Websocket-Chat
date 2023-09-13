@@ -105,7 +105,18 @@ class Server:
                             case CommandName.CHANGE_USERNAME:
                                 await self.change_username(command.username, user)
                             case CommandName.POSTPONE:
-                                pass
+                                logger.info("Postpone command is received from %s", user.username)
+                                loop = asyncio.get_event_loop()
+                                loop.call_later(
+                                    command.seconds_for_delay,
+                                    lambda: asyncio.create_task(
+                                        self.send_message_to_everyone(
+                                            command.message,
+                                            user.username
+                                        )
+                                    )
+                                )
+                                await user.send_message(f"Message will be sent in {command.seconds_for_delay} seconds")
                             case CommandName.QUIT:
                                 pass
                             case CommandName.UNKNOWN:
