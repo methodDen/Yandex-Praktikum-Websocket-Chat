@@ -5,17 +5,18 @@ from config import (
     SERVER_PORT,
     REPORTS_COUNT_LIMIT,
     TIME_FORMAT,
+    CommandName,
+    MessageType,
 )
 from asyncio import (
     StreamReader,
     StreamWriter,
 )
 from logger import logger
-from utils import get_welcome_message
+from utils import get_welcome_message, setup_message
 from models import (
     ServerUser,
     Command,
-    CommandName,
 )
 
 
@@ -107,11 +108,9 @@ class Server:
 
     # main functionality
     async def send_message_to_everyone(self, message: str):
-        now = datetime.now()
-        current_time = now.strftime(TIME_FORMAT)
-        message_with_time = f"|public|{current_time}|{message}"
+        formatted_message = setup_message(MessageType.PUBLIC, message,)
         for user in self.online_users.values():
-            await user.send_message(message_with_time)
+            await user.send_message(formatted_message)
 
 
 if __name__ == '__main__':
