@@ -193,12 +193,18 @@ class Server:
         if user.report_count >= REPORTS_COUNT_LIMIT:
             logger.info("User %s is banned", username)
             await user.send_message(f"\nYou are banned for {BAN_TIME} seconds")
-            ban_timer = threading.Timer(BAN_TIME, function=self.unban_user, args=(user,))
-            ban_timer.start()
+            loop = asyncio.get_event_loop()
+            loop.call_later(
+                BAN_TIME,
+                lambda: asyncio.create_task(
+                    self.unban_user(user)
+                )
+            )
 
     @staticmethod
-    def unban_user(user: ServerUser,) -> None:
+    async def unban_user(user: ServerUser,) -> None:
         user.report_count = 0
+        await user.send_message(f"\nYou are unbanned")
 
 
 if __name__ == '__main__':
