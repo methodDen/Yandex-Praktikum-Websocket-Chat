@@ -87,7 +87,6 @@ class Server:
                 if user.report_count < REPORTS_COUNT_LIMIT:
                     if message.startswith('/'):
                         command = self.parse_message(message.strip())
-                        print(command)
                         logger.info("Command %s is received from %s", command.command_name, user.username)
                         match command.command_name:
                             case CommandName.HELP:
