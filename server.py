@@ -32,17 +32,18 @@ class Server:
         self.message_history: list[str] = []
 
     async def listen(self):
-        try:
-            server = await asyncio.start_server(
-                self.process_client, self.host, self.port,
-            )
-            logger.info("Server is initialized at %s", server.sockets[0].getsockname())
-            async with server:
+        server = await asyncio.start_server(
+            self.process_client, self.host, self.port,
+        )
+        logger.info("Server is initialized at %s", server.sockets[0].getsockname())
+        async with server:
+            try:
                 await server.serve_forever()
-        except Exception as e:
-            logger.error("Error detected: %s", e)
-        except KeyboardInterrupt:
-            logger.info("Shutting down the server")
+            except asyncio.CancelledError:
+                logger.info("Server is shutting down")
+                await self.disconnect_all_clients()
+                server.close()
+                await server.wait_closed()
 
     async def process_client(self, reader: StreamReader, writer: StreamWriter):
         logger.info("Client %s has connected to the server", writer.get_extra_info("peername"))
@@ -80,8 +81,7 @@ class Server:
         return Command(command_name, username, message, seconds_for_delay)
 
     async def process_message(self, user: ServerUser):
-        while True:
-            message = await user.receive_message()
+        while message := await user.receive_message():
             if message:
                 logger.info("Received a message from %s: %s", user.username, message)
                 if user.report_count < REPORTS_COUNT_LIMIT:
@@ -130,6 +130,7 @@ class Server:
                 else:
                     logger.info("User %s is banned", user.username)
                     await user.send_message(f"You are banned, cannot send messages")
+        await self.disconnect_client(user, user.writer)
 
     async def send_message_to_everyone(self, message: str, from_username: str,):
         message = await prepare_message(
@@ -212,8 +213,39 @@ class Server:
         for message in self.message_history[-20:]:
             await user.send_message(f'{message}\n')
 
+    async def disconnect_client(self, user: ServerUser, writer: StreamWriter,):
+        logger.info(
+            "Client %s has disconnected",
+            writer.get_extra_info("peername"),
+        )
+        self.online_users.pop(user.username)
+        writer.close()
+        await writer.wait_closed()
+
+    async def disconnect_all_clients(self,):
+        tasks = []
+        for user in self.online_users.values():
+            tasks.append(self.disconnect_client(user, user.writer))
+        await asyncio.gather(*tasks)
+
 
 if __name__ == '__main__':
     logger.info("Starting server")
     server = Server()
-    asyncio.run(server.listen())
+    try:
+        asyncio.run(server.listen())
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt detected, server is shutting down")
+
+"""
+
+От автора проекта: 
+
+Доброго времени суток!
+Похоже, что та проблема, которая была в переподключении клиента к серверу, была связана с тем, что я не закрывал 
+соединение в сокетах.
+Прямо сейчас я схэндлил эту проблему, и все более менее работает. 
+Однако, иногда проблема с отправкой данных с клиента на сервер все еще возникает, но это по моим предположениям
+возникает из-за самих сокетов, не из-за кода.
+
+"""
